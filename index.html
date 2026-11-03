@@ -69,6 +69,7 @@ a.act{text-decoration:none;display:inline-block}
 </div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 // ===== FIREBASE CONFIG =====
 const CFG={apiKey:"AIzaSyBp1yA1BRp6B_CfLmLQE4DLN8J6_1kJEXc",authDomain:"mastermind-eb4ee.firebaseapp.com",databaseURL:"https://mastermind-eb4ee-default-rtdb.europe-west1.firebasedatabase.app",projectId:"mastermind-eb4ee",storageBucket:"mastermind-eb4ee.firebasestorage.app",messagingSenderId:"671202526007",appId:"1:671202526007:web:186cf78eb69ac74b87d0b2"};
@@ -76,7 +77,8 @@ const CFG={apiKey:"AIzaSyBp1yA1BRp6B_CfLmLQE4DLN8J6_1kJEXc",authDomain:"mastermi
 const COLS=[["#3b82f6","#0b2f78"],["#22c55e","#0a5a22"],["#facc15","#8a6c00"],["#f97316","#8a3600"],["#a855f7","#4a1580"],["#06b6d4","#055a6a"]];
 const ROWS=10,$=id=>document.getElementById(id),arr=o=>o?Object.values(o):[];
 let lastM=null,sel=null,cpu=false,db,ref,rid,role,code=[],setup=[],cur=[],pm=[],D={status:"setup",guesses:[],marks:[],code:null},act=()=>{};
-try{firebase.initializeApp(CFG);db=firebase.database()}catch(e){}
+let uid=null,authP=Promise.resolve();
+try{firebase.initializeApp(CFG);db=firebase.database();authP=firebase.auth().signInAnonymously().then(c=>{uid=c.user.uid})}catch(e){}
 "CODE MATCH".split("").forEach((ch,i)=>{const e=document.createElement("span");if(ch==" ")e.style.width="14px";else{const c=COLS[i%6];e.textContent=ch;e.style.setProperty("--c",c[0]);e.style.setProperty("--d",c[1])}$("logo").appendChild(e)});
 let AC;function snd(f,d,t,v,f2){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state=="suspended")AC.resume();const T=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.setValueAtTime(f,T);if(f2)o.frequency.exponentialRampToValueAtTime(f2,T+d);g.gain.setValueAtTime(v,T);g.gain.exponentialRampToValueAtTime(.0001,T+d);o.connect(g);g.connect(AC.destination);o.start(T);o.stop(T+d)}catch(e){}}
 const tap=()=>snd(520,.09,"triangle",.25,240);
@@ -95,9 +97,9 @@ function startCpu(){cpu=true;lastM=0;rid="CPU";role="p2";cur=[];code=Array.from(
 $("cpu").onclick=()=>{startMusic();startCpu()};
 function enter(r){lastM=null;role=r;$("home").style.display="none";$("game").style.display="flex";listen()}
 $("create").onclick=()=>{startMusic();if(!db||CFG.apiKey.startsWith("YOUR"))return $("msg").textContent="Add your Firebase config at the top of the file first.";
- rid=Math.random().toString(36).slice(2,6).toUpperCase();ref=db.ref("rooms/"+rid);ref.set({status:"setup"}).then(()=>enter("p1"))};
+ rid=Math.random().toString(36).slice(2,6).toUpperCase();ref=db.ref("rooms/"+rid);authP.then(()=>ref.set({status:"setup",host:uid})).then(()=>enter("p1")).catch(()=>$("msg").textContent="Couldn't create the game. Check your sign-in and database rules.")};
 $("joinb").onclick=()=>{startMusic();if(!db||CFG.apiKey.startsWith("YOUR"))return $("msg").textContent="Add your Firebase config at the top of the file first.";
- rid=$("rid").value.trim().toUpperCase();if(rid.length<4)return;ref=db.ref("rooms/"+rid);ref.once("value").then(s=>{if(!s.exists())return $("msg").textContent="No game with that code.";enter("p2")})};
+ rid=$("rid").value.trim().toUpperCase();if(rid.length<4)return;ref=db.ref("rooms/"+rid);authP.then(()=>ref.once("value")).then(s=>{if(!s.exists())return $("msg").textContent="No game with that code.";enter("p2")}).catch(()=>$("msg").textContent="Couldn't join. Check your connection.")};
 function render(){
  if(!role)return;
  const G=D.guesses,M=D.marks,over=D.status=="won"||D.status=="lost",p1=role=="p1";
@@ -134,7 +136,7 @@ function render(){
    pm=[];ref.update(u)}}
  else if(p1&&D.status=="play"){m.innerHTML=tag+"Waiting for Player 2's guess…";go.style.display="none"}
  else if(over){m.innerHTML=tag+(D.status=="won"?`🎉 <b>Code cracked</b> in ${G.length} ${G.length==1?"guess":"guesses"}!`:"💥 <b>Out of guesses!</b> The code is revealed.");
-  if(p1){go.textContent="New game";act=()=>{code=[];setup=[];pm=[];ref.set({status:"setup"})}}else if(cpu){go.textContent="Play again";act=startCpu}else{go.style.display="none"}}
+  if(p1){go.textContent="New game";act=()=>{code=[];setup=[];pm=[];ref.update({status:"setup",guesses:null,marks:null,code:null})}}else if(cpu){go.textContent="Play again";act=startCpu}else{go.style.display="none"}}
  else if(!p1&&D.status=="setup"){m.innerHTML=tag+"Waiting for the code setter to lock the code…";go.style.display="none"}
  else if(turnP2){m.innerHTML=tag+`<b>Your guess:</b> ${G.length+1} of ${ROWS}. Pick 4 colours.`;go.textContent="Submit guess";go.disabled=[0,1,2,3].some(i=>cur[i]==null);
   act=()=>{const g=cur.slice();cur=[];ref.child("guesses/"+G.length).set(g)}}

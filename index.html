@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Code Match</title>
+<title>Break the Code</title>
 <style>
 :root{--bg:#1c1410;--bg2:#3a2a1e;--fg:#f4e9d8;--wood:#6b4426;--wood2:#4a2d17;--hole:#1a0f08;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#e9dcc6;--bg2:#cdb48f;--fg:#2a1a0d}}
@@ -13,8 +13,8 @@ h1{margin:4px 0;font-size:22px;letter-spacing:2px}
 #home input{font-size:22px;text-align:center;text-transform:uppercase;width:150px;padding:10px;border-radius:10px;border:2px solid #d9962b;background:#fff;color:#2a1a0d;letter-spacing:4px}
 .scene{perspective:800px;width:100%;max-width:290px;margin:4px 0 40px}
 .board{transform:rotateX(22deg);transform-style:preserve-3d;background:linear-gradient(160deg,var(--wood),var(--wood2));border-radius:16px;padding:10px;box-shadow:0 30px 30px rgba(0,0,0,.55),inset 0 2px 4px rgba(255,255,255,.2),0 8px 0 #2b190b}
-.shield{position:relative;background:#222;border-radius:10px;padding:0;margin-bottom:8px;box-shadow:inset 0 3px 8px #000}
-.cover{position:absolute;inset:0;border-radius:10px;background:linear-gradient(135deg,#9aa0a8,#4b5058 60%,#7d838b);box-shadow:0 6px 10px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:3px;color:#222;transform-origin:top;transition:transform .8s,opacity .8s}
+.shield{position:relative;background:#222;border-radius:10px;padding:0;margin-bottom:8px;width:fit-content;box-shadow:inset 0 3px 8px #000}
+.cover{position:absolute;inset:0;border-radius:10px;background:linear-gradient(135deg,#9aa0a8,#4b5058 60%,#7d838b);box-shadow:0 6px 10px rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;letter-spacing:2px;color:#222;transform-origin:top;transition:transform .8s,opacity .8s}
 .cover.open{transform:rotateX(-80deg) translateY(-10px);opacity:0;pointer-events:none}
 .row{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-radius:10px;margin:3px 0}
 .row.cur{background:rgba(255,220,150,.18);box-shadow:0 0 0 2px #ffd27a}
@@ -34,8 +34,9 @@ h1{margin:4px 0;font-size:22px;letter-spacing:2px}
 .pal .peg{transition:transform .12s}
 .pal .peg:active{transform:translateY(3px) scale(.95)}
 .slots .sel{outline:3px solid #ffd27a;outline-offset:3px;border-radius:50%}
-.logo{display:flex;gap:2px;font-size:36px;font-weight:900;margin:2px 0 6px;letter-spacing:0}
-.logo span{color:var(--c);text-shadow:0 1px 0 var(--d),0 2px 0 var(--d),0 3px 0 var(--d),0 4px 0 var(--d),0 5px 0 var(--d),0 9px 8px rgba(0,0,0,.5)}
+.logo{display:flex;flex-direction:column;align-items:center;font-size:clamp(40px,13vw,54px);font-weight:900;font-family:"Arial Black",Impact,system-ui,sans-serif;line-height:.95;margin:2px 0 14px;letter-spacing:1px}
+.ll{display:flex;gap:2px;justify-content:center}
+.logo span{color:var(--c);-webkit-text-stroke:1.5px rgba(255,255,255,.35);text-shadow:0 1px 0 var(--d),0 2px 0 var(--d),0 3px 0 var(--d),0 4px 0 var(--d),0 5px 0 var(--d),0 6px 0 var(--d),0 7px 0 var(--d),0 8px 0 var(--d),0 14px 12px rgba(0,0,0,.55)}
 body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;background:radial-gradient(circle at 20% 30%,rgba(59,130,246,.25),transparent 30%),radial-gradient(circle at 80% 20%,rgba(168,85,247,.22),transparent 30%),radial-gradient(circle at 70% 80%,rgba(34,197,94,.2),transparent 30%),radial-gradient(circle at 25% 85%,rgba(250,204,21,.2),transparent 30%);animation:drift 24s ease-in-out infinite alternate}
 @keyframes drift{to{transform:translate(6%,4%) rotate(8deg) scale(1.1)}}
 @media (prefers-reduced-motion:reduce){body::before{animation:none}}
@@ -78,7 +79,7 @@ a.act{text-decoration:none;display:inline-block}
 </div>
 <div id="game" style="display:none;width:100%;flex-direction:column;align-items:center">
 <div class="scene" id="scene"><div class="board">
-<div class="shield"><div class="row"><div class="slots" id="code"></div><div class="fb"></div></div><div class="cover" id="cover">SECRET CODE</div></div>
+<div class="shield"><div class="row"><div class="slots" id="code"></div></div><div class="cover" id="cover">SECRET CODE</div></div>
 <div id="rows" style="display:flex;flex-direction:column-reverse"></div>
 </div></div>
 <div class="pal" id="pal"></div>
@@ -97,7 +98,7 @@ const ROWS=10,$=id=>document.getElementById(id),arr=o=>o?Object.values(o):[];
 let pop=-1,cel=false,lastM=null,sel=null,cpu=false,db,ref,rid,role,code=[],setup=[],cur=[],pm=[],D={status:"setup",guesses:[],marks:[],code:null},act=()=>{};
 let uid=null,authP=Promise.resolve();
 try{firebase.initializeApp(CFG);db=firebase.database();authP=firebase.auth().signInAnonymously().then(c=>{uid=c.user.uid})}catch(e){}
-"CODE MATCH".split("").forEach((ch,i)=>{const e=document.createElement("span");e.style.setProperty("--i",i);if(ch==" ")e.style.width="14px";else{const c=COLS[i%6];e.textContent=ch;e.style.setProperty("--c",c[0]);e.style.setProperty("--d",c[1])}$("logo").appendChild(e)});
+(()=>{let n=0;["BREAK","THE CODE"].forEach(w=>{const l=document.createElement("div");l.className="ll";w.split("").forEach(ch=>{const e=document.createElement("span");e.style.setProperty("--i",n);if(ch==" ")e.style.width="16px";else{const c=COLS[n%6];e.textContent=ch;e.style.setProperty("--c",c[0]);e.style.setProperty("--d",c[1])}n++;l.appendChild(e)});$("logo").appendChild(l)})})();
 let AC;function snd(f,d,t,v,f2){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state=="suspended")AC.resume();const T=AC.currentTime,o=AC.createOscillator(),g=AC.createGain();o.type=t;o.frequency.setValueAtTime(f,T);if(f2)o.frequency.exponentialRampToValueAtTime(f2,T+d);g.gain.setValueAtTime(v,T);g.gain.exponentialRampToValueAtTime(.0001,T+d);o.connect(g);g.connect(AC.destination);o.start(T);o.stop(T+d)}catch(e){}}
 const tap=()=>snd(520,.09,"triangle",.25,240);
 const ping=()=>{snd(1320,.5,"sine",.18);setTimeout(()=>snd(1760,.6,"sine",.12),90)};
@@ -169,8 +170,8 @@ COLS.forEach((c,i)=>{const b=document.createElement("button");b.className="peg";
 $("clr").onclick=()=>{if(role=="p1")setup=[];else cur=[];sel=null;render()};
 $("menu").onclick=()=>{if(ref&&ref.off)ref.off();ref=null;role=null;cpu=false;code=[];setup=[];cur=[];pm=[];sel=null;lastM=null;D={status:"setup",guesses:[],marks:[],code:null};$("game").style.display="none";$("home").style.display="flex";$("msg").textContent=""};
 $("go").onclick=()=>{sel=null;act()};
-const link=()=>location.href.split(/[?#]/)[0]+"?room="+rid,txt=()=>"Join my Code Match game! Room code: "+rid+" "+link();
-$("share").onclick=async()=>{if(navigator.share){try{await navigator.share({title:"Code Match",text:"Join my Code Match game! Room code: "+rid,url:link()});return}catch(e){if(e&&e.name=="AbortError")return}}
+const link=()=>location.href.split(/[?#]/)[0]+"?room="+rid,txt=()=>"Join my Break the Code game! Room code: "+rid+" "+link();
+$("share").onclick=async()=>{if(navigator.share){try{await navigator.share({title:"Break the Code",text:"Join my Break the Code game! Room code: "+rid,url:link()});return}catch(e){if(e&&e.name=="AbortError")return}}
  $("wa").href="https://wa.me/?text="+encodeURIComponent(txt());$("sms").href="sms:?&body="+encodeURIComponent(txt());$("sharebox").style.display="flex"};
 $("cp").onclick=()=>{const t=txt();(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>$("cp").textContent="Copied!").catch(()=>prompt("Copy this:",t))};
 $("mute").onclick=()=>{const a=$("bgm");a.muted=!a.muted;$("mute").textContent=a.muted?"🔇":"🔊"};
